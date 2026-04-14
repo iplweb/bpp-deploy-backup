@@ -3,18 +3,40 @@
 [![CI](https://github.com/iplweb/bpp-deploy-backup/actions/workflows/ci.yml/badge.svg)](https://github.com/iplweb/bpp-deploy-backup/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-Jednoplikowy skrypt shellowy do pobierania pełnej kopii zapasowej instalacji
+Jednoplikowy skrypt shellowy do pobierania kopii zapasowej **plików
+konfiguracyjnych i uruchomieniowych** instalacji
 [BPP](https://github.com/iplweb/bpp-deploy) ze zdalnego hosta na maszynę
 lokalną.
 
-## Co jest pakowane
+## Zakres backupu
+
+> **Uwaga:** to **nie jest** backup całego systemu ani backup danych
+> aplikacji. Skrypt archiwizuje wyłącznie pliki potrzebne do odtworzenia
+> **konfiguracji uruchomieniowej** instancji BPP.
 
 Skrypt łączy się przez SSH z podanym hostem, odczytuje `~/bpp-deploy/.env`
 i streamuje pojedyncze archiwum `tar.gz` zawierające:
 
 1. `~/bpp-deploy/` — repozytorium deploy (pliki compose, `Makefile`, `.env`)
 2. Katalog wskazany przez zmienną `BPP_CONFIGS_DIR` z `~/bpp-deploy/.env` —
-   konfiguracje instancji, sekrety, override'y compose, dane stanu
+   pliki konfiguracji instancji, sekrety, override'y compose, szablony i
+   pliki środowiskowe wymagane przez `docker compose up`
+
+### Czego backup **NIE** zawiera
+
+- dumpu bazy PostgreSQL ani żadnych innych baz danych
+- wolumenów Dockera (dane uploadów, Redis, RabbitMQ, Prometheus, Grafana,
+  Solr itp.) — nawet jeśli niektóre leżą fizycznie gdzieś na zdalnym hoście,
+  **skrypt ich nie rusza**
+- systemu operacyjnego, `/etc`, pakietów, użytkowników
+- logów aplikacji ani logów kontenerów
+- obrazów Dockera (są odtwarzane z rejestru przy `docker compose pull`)
+
+Do backupu danych (baza, wolumeny) służą osobne mechanizmy opisane
+w [iplweb/bpp-deploy](https://github.com/iplweb/bpp-deploy)
+(np. `docker-compose.backup.yml` / target `make backup`). Ten skrypt jest
+komplementarny: pozwala odtworzyć **jak** instancja była skonfigurowana,
+a nie **co** w niej było.
 
 Archiwum trafia na maszynę lokalną (nigdy nie powstaje plik pośredni na
 zdalnym hoście), pod nazwą
@@ -80,7 +102,10 @@ tar -xzf /sciezka/do/backup-host-projekt-TS.tar.gz
 ```
 
 Następnie katalogi należy umieścić z powrotem w `$HOME/bpp-deploy` oraz
-w miejscu wskazywanym przez `BPP_CONFIGS_DIR` na docelowym hoście.
+w miejscu wskazywanym przez `BPP_CONFIGS_DIR` na docelowym hoście. Po
+przywróceniu uzyskuje się **gotową do uruchomienia konfigurację** — baza
+danych i wolumeny muszą zostać odtworzone osobno (z własnych backupów),
+zanim wystartujesz `docker compose up`.
 
 ## Licencja
 
